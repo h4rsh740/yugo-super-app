@@ -1,0 +1,352 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String               @id @default(uuid())
+  phone            String               @unique
+  name             String               @default("YUGO User")
+  email            String?              @unique
+  rating           Float                @default(4.9)
+  yugoCashBalance  Float                @default(500.0)
+  isPhoneVerified  Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  sessions         Session[]
+  addresses        Address[]
+  emergencyContacts EmergencyContact[]
+  preferences      NotificationPreference?
+  rides            Ride[]
+  foodOrders       FoodOrder[]
+  parcelDeliveries ParcelDelivery[]
+  transactions     PaymentTransaction[]
+  activities       ActivityRecord[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String    @id @default(uuid())
+  userId       String
+  refreshToken String    @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model OtpRequest {
+  id        String   @id @default(uuid())
+  phone     String
+  otpCode   String
+  purpose   String   @default("LOGIN")
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, isUsed])
+  @@map("otp_requests")
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  label      String   // HOME, WORK, OTHER
+  title      String
+  address    String
+  latitude   Float?
+  longitude  Float?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+model EmergencyContact {
+  id           String   @id @default(uuid())
+  userId       String
+  name         String
+  phone        String
+  relationship String   @default("Family")
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("emergency_contacts")
+}
+
+model NotificationPreference {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  rideUpdates   Boolean  @default(true)
+  foodUpdates   Boolean  @default(true)
+  parcelUpdates Boolean  @default(true)
+  promotional   Boolean  @default(false)
+  pushEnabled   Boolean  @default(true)
+  smsEnabled    Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model Driver {
+  id              String   @id @default(uuid())
+  name            String
+  phone           String
+  rating          Float    @default(4.9)
+  totalTrips      Int      @default(100)
+  vehicleModel    String
+  vehicleColor    String
+  vehiclePlate    String
+  vehicleCategory String   // AUTO, MOTO, GO, PREMIER, XL
+  latitude        Float    @default(28.4630)
+  longitude       Float    @default(77.0295)
+  isAvailable     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  rides           Ride[]
+
+  @@map("drivers")
+}
+
+model Ride {
+  id            String      @id @default(uuid())
+  userId        String
+  driverId      String?
+  category      String      // AUTO, MOTO, GO, PREMIER, XL
+  pickupTitle   String
+  pickupAddress String
+  pickupLat     Float       @default(28.4630)
+  pickupLng     Float       @default(77.0295)
+  destTitle     String
+  destAddress   String
+  destLat       Float       @default(28.4950)
+  destLng       Float       @default(77.0895)
+  fareAmount    Float
+  distanceKm    Float       @default(5.0)
+  etaMinutes    Int         @default(3)
+  status        String      @default("SEARCHING") // SEARCHING, DRIVER_ASSIGNED, DRIVER_ARRIVING, TRIP_STARTED, COMPLETED, CANCELLED
+  otpPin        String      @default("4819")
+  paymentMethod String      @default("Cash") // YUGO_CASH, UPI, CARD, CASH
+  paymentStatus String      @default("PENDING") // PENDING, PAID, REFUNDED
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  driver        Driver?     @relation(fields: [driverId], references: [id])
+  events        RideEvent[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("rides")
+}
+
+model RideEvent {
+  id        String   @id @default(uuid())
+  rideId    String
+  status    String
+  note      String?
+  timestamp DateTime @default(now())
+
+  ride      Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  @@index([rideId])
+  @@map("ride_events")
+}
+
+model Restaurant {
+  id                  String     @id @default(uuid())
+  name                String
+  cuisine             String
+  rating              Float      @default(4.5)
+  ratingCount         String     @default("1k+")
+  deliveryTimeMinutes Int        @default(25)
+  priceForTwo         Float      @default(350.0)
+  distanceKm          Float      @default(2.5)
+  isPureVeg           Boolean    @default(false)
+  offerText           String?
+  imageKey            String     @default("img_biryani")
+  isOpen              Boolean    @default(true)
+  createdAt           DateTime   @default(now())
+
+  menuItems           MenuItem[]
+  orders              FoodOrder[]
+
+  @@map("restaurants")
+}
+
+model MenuItem {
+  id           String      @id @default(uuid())
+  restaurantId String
+  name         String
+  description  String
+  price        Float
+  isVeg        Boolean     @default(true)
+  category     String      // Biryani, Kebabs, Main Course, Pizzas, etc.
+  isBestseller Boolean     @default(false)
+  imageKey     String      @default("img_chicken_biryani")
+  isAvailable  Boolean     @default(true)
+
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orderItems   FoodOrderItem[]
+
+  @@index([restaurantId])
+  @@map("menu_items")
+}
+
+model FoodOrder {
+  id                       String          @id @default(uuid())
+  userId                   String
+  restaurantId             String
+  deliveryAddress          String
+  subtotal                 Float
+  deliveryFee              Float           @default(35.0)
+  taxes                    Float           @default(18.0)
+  packagingFee             Float           @default(15.0)
+  discount                 Float           @default(0.0)
+  totalAmount              Float
+  paymentMethod            String          @default("Online") // YUGO_CASH, UPI, CARD, CASH
+  paymentStatus            String          @default("PENDING") // PENDING, PAID, REFUNDED
+  status                   String          @default("CONFIRMED") // CONFIRMED, PREPARING, PICKED_UP, ARRIVING, DELIVERED, CANCELLED
+  estimatedDeliveryMinutes Int             @default(30)
+  placedAt                 DateTime        @default(now())
+  deliveredAt              DateTime?
+
+  user                     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant               Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items                    FoodOrderItem[]
+
+  @@index([userId])
+  @@index([restaurantId])
+  @@map("food_orders")
+}
+
+model FoodOrderItem {
+  id         String    @id @default(uuid())
+  orderId    String
+  menuItemId String
+  name       String
+  price      Float
+  quantity   Int       @default(1)
+
+  order      FoodOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("food_order_items")
+}
+
+model ParcelDelivery {
+  id                     String    @id @default(uuid())
+  userId                 String
+  trackingId             String    @unique
+  senderName             String
+  senderPhone            String
+  pickupAddress          String
+  pickupLat              Float     @default(28.4630)
+  pickupLng              Float     @default(77.0295)
+  recipientName          String
+  recipientPhone         String
+  recipientAddress       String
+  dropLat                Float     @default(28.4950)
+  dropLng                Float     @default(77.0895)
+  category               String    // DOCUMENTS, FOOD, ELECTRONICS, CLOTHES, GIFTS
+  weightKg               Float     @default(1.0)
+  instructions           String?
+  price                  Float
+  baseFare               Float     @default(50.0)
+  weightCharge           Float     @default(0.0)
+  distanceCharge         Float     @default(30.0)
+  status                 String    @default("CREATED") // CREATED, RIDER_ASSIGNED, PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED
+  deliveryPin            String    @default("7921")
+  riderName              String    @default("Vikram Singh")
+  riderPhone             String    @default("+91 98765 88990")
+  estimatedPickupMinutes Int       @default(12)
+  estimatedDeliveryMinutes Int     @default(35)
+  paymentMethod          String    @default("Online")
+  paymentStatus          String    @default("PAID")
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([trackingId])
+  @@map("parcel_deliveries")
+}
+
+model PaymentTransaction {
+  id             String   @id @default(uuid())
+  userId         String
+  referenceId    String   // bookingId, orderId, trackingId, or wallet-topup
+  serviceType    String   // RIDE, FOOD, PARCEL, WALLET
+  amount         Float
+  method         String   // YUGO_CASH, UPI, CARD, CASH
+  status         String   @default("SUCCESS") // INITIATED, SUCCESS, FAILED, REFUNDED
+  provider       String   @default("LOCAL_TEST") // LOCAL_TEST, RAZORPAY, STRIPE
+  transactionRef String?
+  metadata       String?
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([referenceId])
+  @@map("payment_transactions")
+}
+
+model ActivityRecord {
+  id             String   @id @default(uuid())
+  userId         String
+  title          String
+  serviceType    String   // CAB, BIKE, AUTO, PREMIER, XL, FOOD, PARCEL
+  dateFormatted  String
+  priceFormatted String
+  status         String   // Completed, Delivered, In Progress, Cancelled
+  startLocation  String
+  endLocation    String
+  itemsSummary   String?
+  imageKey       String   @default("img_cab_go")
+  referenceId    String?
+  createdAt      DateTime @default(now())
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("activity_records")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  message     String
+  serviceType String   // RIDE, FOOD, PARCEL, SYSTEM
+  referenceId String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
