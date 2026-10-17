@@ -99,8 +99,9 @@ fun YugoApp() {
             composable("login") {
                 LoginScreen(
                     onOtpRequested = { phone, testOtp ->
+                        val digits = phone.filter { it.isDigit() }.takeLast(10)
                         val code = testOtp ?: "123456"
-                        navController.navigate("verify_otp/$phone/$code")
+                        navController.navigate("verify_otp/$digits/$code")
                     }
                 )
             }
@@ -112,10 +113,11 @@ fun YugoApp() {
                     navArgument("testOtp") { type = NavType.StringType; defaultValue = "123456" }
                 )
             ) { backStackEntry ->
-                val phone = backStackEntry.arguments?.getString("phone") ?: ""
+                val rawPhone = backStackEntry.arguments?.getString("phone") ?: ""
+                val cleanPhone = if (rawPhone.startsWith("+91")) rawPhone else "+91${rawPhone.filter { it.isDigit() }.takeLast(10)}"
                 val testOtp = backStackEntry.arguments?.getString("testOtp")
                 OtpVerificationScreen(
-                    phone = phone,
+                    phone = cleanPhone,
                     initialTestOtp = testOtp,
                     onBackClick = { navController.popBackStack() },
                     onVerificationSuccess = {

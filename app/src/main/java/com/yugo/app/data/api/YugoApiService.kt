@@ -28,7 +28,13 @@ class YugoApiService {
             if (response.isSuccessful && response.body() != null) {
                 ApiResult.Success(response.body()!!)
             } else {
-                ApiResult.Error(response.errorBody()?.string() ?: "Failed to request OTP (${response.code()})")
+                val errStr = response.errorBody()?.string()
+                val parsed = try {
+                    org.json.JSONObject(errStr ?: "").optString("message", "Failed to request OTP (${response.code()})")
+                } catch (e: Exception) {
+                    errStr ?: "Failed to request OTP (${response.code()})"
+                }
+                ApiResult.Error(parsed)
             }
         } catch (e: Exception) {
             ApiResult.Error("Network error: ${e.localizedMessage}")
@@ -41,7 +47,13 @@ class YugoApiService {
             if (response.isSuccessful && response.body() != null) {
                 ApiResult.Success(response.body()!!)
             } else {
-                ApiResult.Error(response.errorBody()?.string() ?: "Invalid OTP code (${response.code()})")
+                val errStr = response.errorBody()?.string()
+                val parsed = try {
+                    org.json.JSONObject(errStr ?: "").optString("message", "Invalid OTP code (${response.code()})")
+                } catch (e: Exception) {
+                    errStr ?: "Invalid OTP code (${response.code()})"
+                }
+                ApiResult.Error(parsed)
             }
         } catch (e: Exception) {
             ApiResult.Error("Network error: ${e.localizedMessage}")
