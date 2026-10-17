@@ -212,7 +212,7 @@ object ApiClient {
         return if (isEmulator()) {
             "http://10.0.2.2:8080/api/v1/"
         } else {
-            "https://great-wolves-love.loca.lt/api/v1/"
+            "https://yugo-backend.onrender.com/api/v1/"
         }
     }
 
