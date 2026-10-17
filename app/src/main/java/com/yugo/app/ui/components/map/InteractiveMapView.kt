@@ -76,45 +76,47 @@ fun InteractiveMapView(
             .fillMaxSize()
             .background(Color(0xFFF1F5F9))
     ) {
+        // 1. High-fidelity Instant Vector Cartography (always rendered as rock-solid foundation)
+        RealisticVectorMapFallback(
+            showRoute = showRoute,
+            pickupLocationName = pickupLocationName,
+            destinationName = destinationName
+        )
+
         if (isRealMapMode) {
-            // Real Interactive Street Map (Leaflet + CartoDB Voyager/Positron)
+            // 2. Real Interactive Street Map Layer (Leaflet + CartoDB / OpenStreetMap)
+            var lastLoadedHtml by remember { mutableStateOf("") }
             AndroidView(
                 factory = { context ->
                     WebView(context).apply {
                         setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
                         settings.apply {
                             javaScriptEnabled = true
+                            allowFileAccess = true
+                            allowContentAccess = true
                             domStorageEnabled = true
+                            databaseEnabled = true
                             loadWithOverviewMode = true
                             useWideViewPort = true
                             cacheMode = WebSettings.LOAD_DEFAULT
+                            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                         }
                         webViewClient = object : WebViewClient() {
-                            override fun onReceivedError(
-                                view: WebView?,
-                                errorCode: Int,
-                                description: String?,
-                                failingUrl: String?
-                            ) {
-                                // Fallback to realistic vector map if network fails
-                                isRealMapMode = false
-                            }
+                            // Benign asset warnings do not disable the map
                         }
-                        loadDataWithBaseURL("https://yugo.app", mapHtml, "text/html", "UTF-8", null)
+                        lastLoadedHtml = mapHtml
+                        loadDataWithBaseURL("file:///android_asset/", mapHtml, "text/html", "UTF-8", null)
                         webViewRef = this
                     }
                 },
                 update = { webView ->
-                    webView.loadDataWithBaseURL("https://yugo.app", mapHtml, "text/html", "UTF-8", null)
+                    if (lastLoadedHtml != mapHtml) {
+                        lastLoadedHtml = mapHtml
+                        webView.loadDataWithBaseURL("file:///android_asset/", mapHtml, "text/html", "UTF-8", null)
+                    }
                 },
                 modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            // High-fidelity fallback vector cartography
-            RealisticVectorMapFallback(
-                showRoute = showRoute,
-                pickupLocationName = pickupLocationName,
-                destinationName = destinationName
             )
         }
 
@@ -215,10 +217,16 @@ private fun generateLeafletMapHtml(
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <link rel="stylesheet" href="file:///android_asset/leaflet/leaflet.css" />
+          <script src="file:///android_asset/leaflet/leaflet.js"></script>
+          <script>
+            if (typeof L === 'undefined') {
+              document.write('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />');
+              document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>');
+            }
+          </script>
           <style>
-            html, body, #map { height: 100%; width: 100%; margin: 0; padding: 0; background: #eef2f6; overflow: hidden; }
+            html, body, #map { height: 100%; width: 100%; margin: 0; padding: 0; background: transparent !important; overflow: hidden; }
             .leaflet-control-attribution { display: none !important; }
             
             /* Custom Marker Styling */
@@ -262,144 +270,160 @@ private fun generateLeafletMapHtml(
         <body>
           <div id="map"></div>
           <script>
-            var startLat = $startLat, startLng = $startLng;
-            var endLat = $endLat, endLng = $endLng;
-
-            var centerLat = (startLat + endLat) / 2;
-            var centerLng = (startLng + endLng) / 2;
-
-            var map = L.map('map', {
-              zoomControl: false,
-              attributionControl: false
-            }).setView([centerLat, centerLng], 14);
-
-            window.map = map;
-
-            L.tileLayer('$tileUrl', {
-              maxZoom: 19,
-              subdomains: 'abcd'
-            }).addTo(map);
-
-            window.recenterMap = function() {
-              if ($showRoute) {
-                map.fitBounds([
-                  [startLat, startLng],
-                  [endLat, endLng]
-                ], { padding: [60, 60] });
-              } else {
-                map.setView([startLat, startLng], 15);
+            function initMap() {
+              if (typeof L === 'undefined') {
+                setTimeout(initMap, 60);
+                return;
               }
-            };
+              try {
+                var startLat = $startLat, startLng = $startLng;
+                var endLat = $endLat, endLng = $endLng;
 
-            // Custom Car SVG Icon
-            var carSvg = '<svg width="26" height="42" viewBox="0 0 26 42" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-              '<rect x="2" y="3" width="22" height="36" rx="6" fill="#0f172a" opacity="0.25"/>' +
-              '<rect x="1" y="1" width="24" height="38" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>' +
-              '<rect x="4" y="8" width="18" height="8" rx="2" fill="#1e293b"/>' +
-              '<rect x="4" y="24" width="18" height="6" rx="2" fill="#1e293b"/>' +
-              '<circle cx="3" cy="35" r="2" fill="#dc2626"/>' +
-              '<circle cx="23" cy="35" r="2" fill="#dc2626"/>' +
-              '<circle cx="3" cy="4" r="2" fill="#fef08a"/>' +
-              '<circle cx="23" cy="4" r="2" fill="#fef08a"/>' +
-              '</svg>';
+                var centerLat = (startLat + endLat) / 2;
+                var centerLng = (startLng + endLng) / 2;
 
-            var carIcon = L.divIcon({
-              className: 'car-marker',
-              html: carSvg,
-              iconSize: [26, 42],
-              iconAnchor: [13, 21]
-            });
+                var map = L.map('map', {
+                  zoomControl: false,
+                  attributionControl: false
+                }).setView([centerLat, centerLng], 14);
 
-            if ($showRoute) {
-              // Real-world Road Routing via OSRM (100% Free OpenStreetMap Router)
-              var fallbackWaypoints = [
-                [startLat, startLng],
-                [startLat + (endLat - startLat) * 0.33, startLng + (endLng - startLng) * 0.33],
-                [startLat + (endLat - startLat) * 0.66, startLng + (endLng - startLng) * 0.66],
-                [endLat, endLng]
-              ];
+                window.map = map;
 
-              function applyRoute(waypoints) {
-                L.polyline(waypoints, {
-                  color: '#1d4ed8',
-                  weight: 12,
-                  opacity: 0.25,
-                  lineCap: 'round',
-                  lineJoin: 'round'
+                L.tileLayer('$tileUrl', {
+                  maxZoom: 19,
+                  subdomains: 'abcd'
                 }).addTo(map);
 
-                L.polyline(waypoints, {
-                  color: '#2563eb',
-                  weight: 6,
-                  opacity: 1,
-                  lineCap: 'round',
-                  lineJoin: 'round'
-                }).addTo(map);
-
-                // Moving Simulated Driver along road coordinates
-                var carMarker = L.marker([startLat, startLng], { icon: carIcon }).addTo(map);
-                var progress = 0;
-                setInterval(function() {
-                  progress = (progress + 0.006) % 1.0;
-                  var totalSeg = waypoints.length - 1;
-                  var scaled = progress * totalSeg;
-                  var idx = Math.min(Math.floor(scaled), totalSeg - 1);
-                  var frac = scaled - idx;
-                  var p1 = waypoints[idx];
-                  var p2 = waypoints[idx + 1];
-
-                  var curLat = p1[0] + (p2[0] - p1[0]) * frac;
-                  var curLng = p1[1] + (p2[1] - p1[1]) * frac;
-                  carMarker.setLatLng([curLat, curLng]);
-                }, 100);
-
-                map.fitBounds([
-                  [startLat, startLng],
-                  [endLat, endLng]
-                ], { padding: [60, 60] });
-              }
-
-              var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + startLng + ',' + startLat + ';' + endLng + ',' + endLat + '?overview=full&geometries=geojson';
-              fetch(osrmUrl)
-                .then(function(res) { return res.json(); })
-                .then(function(data) {
-                  if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                    var coords = data.routes[0].geometry.coordinates.map(function(c) {
-                      return [c[1], c[0]];
-                    });
-                    applyRoute(coords);
+                window.recenterMap = function() {
+                  if ($showRoute) {
+                    map.fitBounds([
+                      [startLat, startLng],
+                      [endLat, endLng]
+                    ], { padding: [60, 60] });
                   } else {
-                    applyRoute(fallbackWaypoints);
+                    map.setView([startLat, startLng], 15);
                   }
-                })
-                .catch(function() {
-                  applyRoute(fallbackWaypoints);
+                };
+
+                // Custom Car SVG Icon
+                var carSvg = '<svg width="26" height="42" viewBox="0 0 26 42" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+                  '<rect x="2" y="3" width="22" height="36" rx="6" fill="#0f172a" opacity="0.25"/>' +
+                  '<rect x="1" y="1" width="24" height="38" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>' +
+                  '<rect x="4" y="8" width="18" height="8" rx="2" fill="#1e293b"/>' +
+                  '<rect x="4" y="24" width="18" height="6" rx="2" fill="#1e293b"/>' +
+                  '<circle cx="3" cy="35" r="2" fill="#dc2626"/>' +
+                  '<circle cx="23" cy="35" r="2" fill="#dc2626"/>' +
+                  '<circle cx="3" cy="4" r="2" fill="#fef08a"/>' +
+                  '<circle cx="23" cy="4" r="2" fill="#fef08a"/>' +
+                  '</svg>';
+
+                var carIcon = L.divIcon({
+                  className: 'car-marker',
+                  html: carSvg,
+                  iconSize: [26, 42],
+                  iconAnchor: [13, 21]
                 });
 
-              // Pickup Marker
-              var pickupMarker = L.marker([startLat, startLng], {
-                icon: L.divIcon({ className: 'pickup-marker', iconSize: [18, 18], iconAnchor: [9, 9] })
-              }).addTo(map);
-              pickupMarker.bindTooltip('$pickupName', { permanent: true, direction: 'top', className: 'tooltip-label', offset: [0, -10] });
+                if ($showRoute) {
+                  // Real-world Road Routing via OSRM (100% Free OpenStreetMap Router)
+                  var fallbackWaypoints = [
+                    [startLat, startLng],
+                    [startLat + (endLat - startLat) * 0.33, startLng + (endLng - startLng) * 0.33],
+                    [startLat + (endLat - startLat) * 0.66, startLng + (endLng - startLng) * 0.66],
+                    [endLat, endLng]
+                  ];
 
-              // Destination Marker
-              var destMarker = L.marker([endLat, endLng], {
-                icon: L.divIcon({ className: 'destination-marker', iconSize: [18, 18], iconAnchor: [9, 9] })
-              }).addTo(map);
-              destMarker.bindTooltip('$dropName', { permanent: true, direction: 'top', className: 'tooltip-label', offset: [0, -10] });
+                  function applyRoute(waypoints) {
+                    L.polyline(waypoints, {
+                      color: '#1d4ed8',
+                      weight: 12,
+                      opacity: 0.25,
+                      lineCap: 'round',
+                      lineJoin: 'round'
+                    }).addTo(map);
+
+                    L.polyline(waypoints, {
+                      color: '#2563eb',
+                      weight: 6,
+                      opacity: 1,
+                      lineCap: 'round',
+                      lineJoin: 'round'
+                    }).addTo(map);
+
+                    // Moving Simulated Driver along road coordinates
+                    var carMarker = L.marker([startLat, startLng], { icon: carIcon }).addTo(map);
+                    var progress = 0;
+                    setInterval(function() {
+                      progress = (progress + 0.006) % 1.0;
+                      var totalSeg = waypoints.length - 1;
+                      var scaled = progress * totalSeg;
+                      var idx = Math.min(Math.floor(scaled), totalSeg - 1);
+                      var frac = scaled - idx;
+                      var p1 = waypoints[idx];
+                      var p2 = waypoints[idx + 1];
+
+                      var curLat = p1[0] + (p2[0] - p1[0]) * frac;
+                      var curLng = p1[1] + (p2[1] - p1[1]) * frac;
+                      carMarker.setLatLng([curLat, curLng]);
+                    }, 100);
+
+                    map.fitBounds([
+                      [startLat, startLng],
+                      [endLat, endLng]
+                    ], { padding: [60, 60] });
+                  }
+
+                  var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + startLng + ',' + startLat + ';' + endLng + ',' + endLat + '?overview=full&geometries=geojson';
+                  fetch(osrmUrl)
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                        var coords = data.routes[0].geometry.coordinates.map(function(c) {
+                          return [c[1], c[0]];
+                        });
+                        applyRoute(coords);
+                      } else {
+                        applyRoute(fallbackWaypoints);
+                      }
+                    })
+                    .catch(function() {
+                      applyRoute(fallbackWaypoints);
+                    });
+
+                  // Pickup Marker
+                  var pickupMarker = L.marker([startLat, startLng], {
+                    icon: L.divIcon({ className: 'pickup-marker', iconSize: [18, 18], iconAnchor: [9, 9] })
+                  }).addTo(map);
+                  pickupMarker.bindTooltip('$pickupName', { permanent: true, direction: 'top', className: 'tooltip-label', offset: [0, -10] });
+
+                  // Destination Marker
+                  var destMarker = L.marker([endLat, endLng], {
+                    icon: L.divIcon({ className: 'destination-marker', iconSize: [18, 18], iconAnchor: [9, 9] })
+                  }).addTo(map);
+                  destMarker.bindTooltip('$dropName', { permanent: true, direction: 'top', className: 'tooltip-label', offset: [0, -10] });
+                } else {
+                  // Current User Location Marker with pulse
+                  var userIcon = L.divIcon({
+                    className: 'pickup-marker',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                  });
+                  L.marker([startLat, startLng], { icon: userIcon }).addTo(map);
+
+                  // 3 Nearby moving driver cabs
+                  var cab1 = L.marker([startLat + 0.003, startLng + 0.002], { icon: carIcon }).addTo(map);
+                  var cab2 = L.marker([startLat - 0.002, startLng + 0.004], { icon: carIcon }).addTo(map);
+                  var cab3 = L.marker([startLat + 0.004, startLng - 0.003], { icon: carIcon }).addTo(map);
+                }
+              } catch(e) {
+                console.error("Map initialization exception:", e);
+              }
+            }
+
+            if (document.readyState === 'complete' || document.readyState === 'interactive') {
+              initMap();
             } else {
-              // Current User Location Marker with pulse
-              var userIcon = L.divIcon({
-                className: 'pickup-marker',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-              });
-              L.marker([startLat, startLng], { icon: userIcon }).addTo(map);
-
-              // 3 Nearby moving driver cabs
-              var cab1 = L.marker([startLat + 0.003, startLng + 0.002], { icon: carIcon }).addTo(map);
-              var cab2 = L.marker([startLat - 0.002, startLng + 0.004], { icon: carIcon }).addTo(map);
-              var cab3 = L.marker([startLat + 0.004, startLng - 0.003], { icon: carIcon }).addTo(map);
+              window.addEventListener('DOMContentLoaded', initMap);
             }
           </script>
         </body>

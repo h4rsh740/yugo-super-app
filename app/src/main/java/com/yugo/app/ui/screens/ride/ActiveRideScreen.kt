@@ -68,13 +68,14 @@ fun ActiveRideScreen(
         )
 
         // 2. Top Turn-by-Turn GPS Navigation HUD Banner (Uber / Google Maps style)
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 14.dp, vertical = 8.dp)
-        ) {
+        if (uiState.rideStatus == RideStatus.IN_PROGRESS) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
+            ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = Color(0xFF064E3B), // Deep Navigation Green
@@ -256,6 +257,63 @@ fun ActiveRideScreen(
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0F172A)
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+            // Clean Floating Top Bar during SEARCHING / DISPATCH: Leaves 100% of upper & center screen for Map!
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FloatingActionButton(
+                    onClick = {
+                        viewModel.cancelRide()
+                        onCancelClick()
+                    },
+                    modifier = Modifier.size(42.dp),
+                    shape = CircleShape,
+                    containerColor = YugoWhite,
+                    contentColor = YugoBlack,
+                    elevation = FloatingActionButtonDefaults.elevation(3.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", modifier = Modifier.size(20.dp))
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = YugoWhite,
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (uiState.rideStatus == RideStatus.SEARCHING) YugoBlue else Color(0xFF16A34A))
+                        )
+                        Text(
+                            text = when (uiState.rideStatus) {
+                                RideStatus.SEARCHING -> "Finding nearby driver..."
+                                RideStatus.DRIVER_ASSIGNED -> "Driver arriving in ${uiState.etaMinutesRemaining}m"
+                                RideStatus.DRIVER_ARRIVING -> "Driver arriving now!"
+                                else -> "Active Trip"
+                            },
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = YugoBlack
                             )
                         )
                     }

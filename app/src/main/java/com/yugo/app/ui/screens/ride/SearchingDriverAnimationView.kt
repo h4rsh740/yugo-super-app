@@ -89,9 +89,9 @@ fun SearchingDriverAnimationView(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Drag handle
             Box(
@@ -102,17 +102,17 @@ fun SearchingDriverAnimationView(
                     .background(YugoDivider)
             )
 
-            // Animated Sonar Search Area
+            // Animated Sonar Search Area (Compact 90dp)
             Box(
                 modifier = Modifier
-                    .size(160.dp)
-                    .padding(vertical = 8.dp),
+                    .size(90.dp)
+                    .padding(vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Expanding Radar Wave 1
                 Box(
                     modifier = Modifier
-                        .size(120.dp)
+                        .size(72.dp)
                         .scale(ring1Scale)
                         .clip(CircleShape)
                         .background(
@@ -124,7 +124,7 @@ fun SearchingDriverAnimationView(
                 // Expanding Radar Wave 2
                 Box(
                     modifier = Modifier
-                        .size(120.dp)
+                        .size(72.dp)
                         .scale(ring2Scale)
                         .clip(CircleShape)
                         .background(
@@ -137,8 +137,8 @@ fun SearchingDriverAnimationView(
                 Surface(
                     shape = CircleShape,
                     color = if (searchStep == 2) Color(0xFF16A34A) else YugoBlack,
-                    shadowElevation = 6.dp,
-                    modifier = Modifier.size(68.dp)
+                    shadowElevation = 4.dp,
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -149,7 +149,7 @@ fun SearchingDriverAnimationView(
                             },
                             contentDescription = "Searching",
                             tint = YugoWhite,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -165,7 +165,7 @@ fun SearchingDriverAnimationView(
             ) { step ->
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = when (step) {
@@ -175,7 +175,7 @@ fun SearchingDriverAnimationView(
                         },
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Black,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             color = YugoBlack
                         )
                     )
@@ -186,7 +186,7 @@ fun SearchingDriverAnimationView(
                             else -> "Assigning vehicle and generating Start PIN"
                         },
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             color = YugoTextSecondary
                         )
                     )
@@ -196,28 +196,26 @@ fun SearchingDriverAnimationView(
             // Animated Radius Progress Bar
             LinearProgressIndicator(
                 modifier = Modifier
-                    .fillMaxWidth(0.75f)
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(3.dp)),
+                    .fillMaxWidth(0.65f)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
                 color = if (searchStep == 2) Color(0xFF16A34A) else YugoBlack,
                 trackColor = YugoSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
-
             // Cancel Search Button
             OutlinedButton(
                 onClick = onCancelClick,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = YugoRed),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCA5A5)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(42.dp)
             ) {
                 Text(
                     text = "Cancel Search",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
                 )
             }
         }

@@ -38,48 +38,52 @@ fun ChooseRideScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showPaymentSheet by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize().background(YugoWhite)) {
-        // Map showing route
-        InteractiveMapView(
-            modifier = Modifier.fillMaxSize(),
-            showRoute = true,
-            pickupLocationName = uiState.pickupLocation.title,
-            destinationName = uiState.destinationLocation?.title ?: "Destination",
-            pickupLatitude = uiState.pickupLocation.latitude,
-            pickupLongitude = uiState.pickupLocation.longitude,
-            destinationLatitude = uiState.destinationLocation?.latitude,
-            destinationLongitude = uiState.destinationLocation?.longitude
-        )
-
-        // Floating Back Button
-        FloatingActionButton(
-            onClick = onBackClick,
+    Column(modifier = Modifier.fillMaxSize().background(YugoWhite)) {
+        // Dedicated Upper Map Section (100% visible, never covered by bottom sheet)
+        Box(
             modifier = Modifier
-                .statusBarsPadding()
-                .padding(16.dp)
-                .size(40.dp),
-            shape = CircleShape,
-            containerColor = YugoWhite,
-            contentColor = YugoBlack,
-            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp)
+                .fillMaxWidth()
+                .weight(1f)
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            InteractiveMapView(
+                modifier = Modifier.fillMaxSize(),
+                showRoute = true,
+                pickupLocationName = uiState.pickupLocation.title,
+                destinationName = uiState.destinationLocation?.title ?: "Destination",
+                pickupLatitude = uiState.pickupLocation.latitude,
+                pickupLongitude = uiState.pickupLocation.longitude,
+                destinationLatitude = uiState.destinationLocation?.latitude,
+                destinationLongitude = uiState.destinationLocation?.longitude
+            )
+
+            // Floating Back Button
+            FloatingActionButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(16.dp)
+                    .size(40.dp),
+                shape = CircleShape,
+                containerColor = YugoWhite,
+                contentColor = YugoBlack,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 2.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
         }
 
         // Bottom Ride Selection Sheet
         Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             color = YugoWhite,
-            shadowElevation = 8.dp
+            shadowElevation = 12.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Handle bar
                 Box(
@@ -107,7 +111,7 @@ fun ChooseRideScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 240.dp),
+                            .heightIn(max = 210.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(uiState.rideOptions) { option ->
@@ -129,7 +133,7 @@ fun ChooseRideScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .clickable { showPaymentSheet = true }
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -154,7 +158,7 @@ fun ChooseRideScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = YugoBlack,
@@ -168,18 +172,18 @@ fun ChooseRideScreen(
                 }
             }
         }
+    }
 
-        // Animated Payment Selection Bottom Sheet
-        if (showPaymentSheet) {
-            com.yugo.app.ui.components.payment.PaymentSelectionBottomSheet(
-                amount = uiState.selectedOption?.fareAmount ?: 120.0,
-                selectedMethod = uiState.paymentMethod,
-                onMethodSelected = { method ->
-                    viewModel.setPaymentMethod(method)
-                },
-                onDismissRequest = { showPaymentSheet = false }
-            )
-        }
+    // Animated Payment Selection Bottom Sheet
+    if (showPaymentSheet) {
+        com.yugo.app.ui.components.payment.PaymentSelectionBottomSheet(
+            amount = uiState.selectedOption?.fareAmount ?: 120.0,
+            selectedMethod = uiState.paymentMethod,
+            onMethodSelected = { method ->
+                viewModel.setPaymentMethod(method)
+            },
+            onDismissRequest = { showPaymentSheet = false }
+        )
     }
 }
 
