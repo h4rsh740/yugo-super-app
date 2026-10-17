@@ -170,16 +170,25 @@ fun PaymentSelectionBottomSheet(
                 }
             }
 
-            // 2. Safe Test UPI
+            // 2. UPI Deep Link & Safe Test UPI
             PaymentMethodTile(
                 icon = Icons.Default.QrCodeScanner,
                 iconBg = Color(0xFFEEF2FF),
                 iconTint = Color(0xFF4F46E5),
                 title = "UPI (GPay / PhonePe / Paytm)",
-                subtitle = "Instant simulated UPI confirmation",
-                badgeText = "Fast & Safe",
+                subtitle = "Pay via any UPI app or safe instant mode",
+                badgeText = "Standard UPI",
                 isSelected = selectedMethod.contains("UPI", ignoreCase = true),
                 onClick = {
+                    try {
+                        val upiUri = android.net.Uri.parse(
+                            "upi://pay?pa=yugo.superapp@upi&pn=YUGO%20Customer&am=${String.format(java.util.Locale.US, "%.2f", amount)}&cu=INR&tn=YUGO%20Payment"
+                        )
+                        val upiIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, upiUri)
+                        context.startActivity(upiIntent)
+                    } catch (e: Exception) {
+                        // In case emulator has no UPI app, seamlessly falls back to safe mode
+                    }
                     onMethodSelected("Online UPI")
                     onDismissRequest()
                 }

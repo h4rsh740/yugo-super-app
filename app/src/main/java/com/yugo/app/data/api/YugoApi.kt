@@ -212,7 +212,7 @@ object ApiClient {
         return if (isEmulator()) {
             "http://10.0.2.2:8080/api/v1/"
         } else {
-            "http://10.0.2.2:8080/api/v1/"
+            "https://great-wolves-love.loca.lt/api/v1/"
         }
     }
 
@@ -220,6 +220,7 @@ object ApiClient {
         val original = chain.request()
         val token = appContext?.let { SessionManager.getInstance(it).getAccessToken() }
         val builder = original.newBuilder()
+            .header("Bypass-Tunnel-Reminder", "true")
         if (!token.isNullOrBlank()) {
             builder.header("Authorization", "Bearer $token")
         }
