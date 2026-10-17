@@ -59,6 +59,10 @@ fun ActiveRideScreen(
             showRoute = true,
             pickupLocationName = uiState.pickupLocation.title,
             destinationName = uiState.destinationLocation?.title ?: "Cyber City Tower B",
+            pickupLatitude = uiState.pickupLocation.latitude,
+            pickupLongitude = uiState.pickupLocation.longitude,
+            destinationLatitude = uiState.destinationLocation?.latitude,
+            destinationLongitude = uiState.destinationLocation?.longitude,
             driverLatitude = driver?.latitude,
             driverLongitude = driver?.longitude
         )

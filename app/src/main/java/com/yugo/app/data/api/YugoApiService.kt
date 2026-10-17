@@ -524,6 +524,47 @@ class YugoApiService {
         ApiResult.Error("Could not fetch locations")
     }
 
+    suspend fun searchLocations(query: String): ApiResult<List<LocationItem>> = withContext(Dispatchers.IO) {
+        try {
+            val response = ApiClient.api.searchLocations(query)
+            if (response.isSuccessful && response.body()?.success == true) {
+                val list = response.body()!!.locations.map { dto ->
+                    LocationItem(
+                        id = dto.id,
+                        title = dto.title,
+                        address = dto.address,
+                        latitude = dto.latitude,
+                        longitude = dto.longitude,
+                        type = when (dto.type.uppercase()) {
+                            "WORK" -> LocationType.WORK
+                            "HOME" -> LocationType.HOME
+                            "AIRPORT" -> LocationType.AIRPORT
+                            "POPULAR" -> LocationType.POPULAR
+                            else -> LocationType.RECENT
+                        }
+                    )
+                }
+                return@withContext ApiResult.Success(list)
+            }
+        } catch (e: Exception) {
+            // fallback
+        }
+        ApiResult.Error("Could not search locations")
+    }
+
+    suspend fun getDrivingRoute(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): ApiResult<RouteResponseDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = ApiClient.api.getRoute(fromLat, fromLng, toLat, toLng)
+            if (response.isSuccessful && response.body()?.success == true) {
+                return@withContext ApiResult.Success(response.body()!!)
+            }
+        } catch (e: Exception) {
+            // fallback
+        }
+        ApiResult.Error("Could not fetch route")
+    }
+
+
     private fun resolveImageRes(key: String?): Int {
         return when (key) {
             "img_chicken_biryani" -> R.drawable.img_chicken_biryani

@@ -407,4 +407,22 @@ class YugoRepository(
             _cachedLocations.value
         }
     }
+
+    suspend fun searchLocations(query: String): List<LocationItem> {
+        if (query.isBlank()) return _cachedLocations.value
+        val result = apiService.searchLocations(query)
+        return if (result is ApiResult.Success && result.data.isNotEmpty()) {
+            result.data
+        } else {
+            _cachedLocations.value.filter {
+                it.title.contains(query, ignoreCase = true) || it.address.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    suspend fun getDrivingRoute(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): RouteResponseDto? {
+        val result = apiService.getDrivingRoute(fromLat, fromLng, toLat, toLng)
+        return if (result is ApiResult.Success) result.data else null
+    }
 }
+

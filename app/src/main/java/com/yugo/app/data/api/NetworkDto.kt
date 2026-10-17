@@ -369,3 +369,12 @@ data class LocationItemDto(
     val longitude: Double,
     val type: String
 )
+
+data class RouteResponseDto(
+    val success: Boolean,
+    val distanceKm: Double,
+    val durationMinutes: Int,
+    val coordinates: List<List<Double>>,
+    val summary: String? = null
+)
+

@@ -44,7 +44,11 @@ fun ChooseRideScreen(
             modifier = Modifier.fillMaxSize(),
             showRoute = true,
             pickupLocationName = uiState.pickupLocation.title,
-            destinationName = uiState.destinationLocation?.title ?: "Destination"
+            destinationName = uiState.destinationLocation?.title ?: "Destination",
+            pickupLatitude = uiState.pickupLocation.latitude,
+            pickupLongitude = uiState.pickupLocation.longitude,
+            destinationLatitude = uiState.destinationLocation?.latitude,
+            destinationLongitude = uiState.destinationLocation?.longitude
         )
 
         // Floating Back Button

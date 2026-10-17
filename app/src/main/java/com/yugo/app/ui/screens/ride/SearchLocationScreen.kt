@@ -42,6 +42,8 @@ fun SearchLocationScreen(
     var destinationText by remember { mutableStateOf("") }
     var hasLocationPermission by remember { mutableStateOf(true) }
     var showPermissionBanner by remember { mutableStateOf(false) }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchResults by remember { mutableStateOf<List<LocationItem>>(emptyList()) }
 
     val recentLocations by repository.cachedLocations.collectAsState()
 
@@ -49,9 +51,24 @@ fun SearchLocationScreen(
         repository.fetchLocations()
     }
 
-    val filteredLocations = remember(destinationText, recentLocations) {
+    LaunchedEffect(destinationText) {
+        val q = destinationText.trim()
+        if (q.isBlank()) {
+            searchResults = emptyList()
+            isSearching = false
+        } else {
+            isSearching = true
+            kotlinx.coroutines.delay(350)
+            searchResults = repository.searchLocations(q)
+            isSearching = false
+        }
+    }
+
+    val displayLocations = remember(destinationText, searchResults, recentLocations) {
         if (destinationText.isBlank()) {
             recentLocations
+        } else if (searchResults.isNotEmpty()) {
+            searchResults
         } else {
             recentLocations.filter {
                 it.title.contains(destinationText, ignoreCase = true) ||
@@ -233,15 +250,29 @@ fun SearchLocationScreen(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 item {
-                    Text(
-                        text = if (destinationText.isBlank()) "Recent & Saved Destinations" else "Matching Destinations",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = YugoTextSecondary,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (destinationText.isBlank()) "Recent & Saved Destinations" else "Places (OpenStreetMap)",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = YugoTextSecondary
+                        )
+                        if (isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = YugoBlack
+                            )
+                        }
+                    }
                 }
 
-                items(filteredLocations) { location ->
+                items(displayLocations, key = { it.id }) { location ->
                     LocationSearchRow(
                         location = location,
                         onClick = { onLocationSelected(location) }

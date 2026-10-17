@@ -46,6 +46,10 @@ fun InteractiveMapView(
     showRoute: Boolean = false,
     pickupLocationName: String? = "DLF Phase 2",
     destinationName: String? = "Cyber City",
+    pickupLatitude: Double? = null,
+    pickupLongitude: Double? = null,
+    destinationLatitude: Double? = null,
+    destinationLongitude: Double? = null,
     driverLatitude: Double? = null,
     driverLongitude: Double? = null,
     isDarkThemeMap: Boolean = false
@@ -53,12 +57,16 @@ fun InteractiveMapView(
     var isRealMapMode by remember { mutableStateOf(true) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
-    // HTML / JS for real OpenStreetMap / CartoDB Voyager map
-    val mapHtml = remember(showRoute, pickupLocationName, destinationName, isDarkThemeMap) {
+    // HTML / JS for real OpenStreetMap / CartoDB Voyager map + live OSRM routing
+    val mapHtml = remember(showRoute, pickupLocationName, destinationName, pickupLatitude, pickupLongitude, destinationLatitude, destinationLongitude, isDarkThemeMap) {
         generateLeafletMapHtml(
             showRoute = showRoute,
             pickupName = pickupLocationName ?: "DLF Phase 2",
             dropName = destinationName ?: "Cyber City",
+            startLat = pickupLatitude ?: 28.4820,
+            startLng = pickupLongitude ?: 77.0835,
+            endLat = destinationLatitude ?: 28.4960,
+            endLng = destinationLongitude ?: 77.0910,
             isDark = isDarkThemeMap
         )
     }
@@ -189,7 +197,11 @@ private fun generateLeafletMapHtml(
     showRoute: Boolean,
     pickupName: String,
     dropName: String,
-    isDark: Boolean
+    startLat: Double = 28.4820,
+    startLng: Double = 77.0835,
+    endLat: Double = 28.4960,
+    endLng: Double = 77.0910,
+    isDark: Boolean = false
 ): String {
     val tileUrl = if (isDark) {
         "https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png"
@@ -250,14 +262,16 @@ private fun generateLeafletMapHtml(
         <body>
           <div id="map"></div>
           <script>
-            // Center in Gurugram / Delhi NCR (Cyber City & DLF Phase 2)
-            var startLat = 28.4820, startLng = 77.0835;
-            var endLat = 28.4960, endLng = 77.0910;
+            var startLat = $startLat, startLng = $startLng;
+            var endLat = $endLat, endLng = $endLng;
+
+            var centerLat = (startLat + endLat) / 2;
+            var centerLng = (startLng + endLng) / 2;
 
             var map = L.map('map', {
               zoomControl: false,
               attributionControl: false
-            }).setView([28.4890, 77.0875], 15);
+            }).setView([centerLat, centerLng], 14);
 
             window.map = map;
 
@@ -297,33 +311,70 @@ private fun generateLeafletMapHtml(
             });
 
             if ($showRoute) {
-              // Real street route coordinates
-              var routeWaypoints = [
+              // Real-world Road Routing via OSRM (100% Free OpenStreetMap Router)
+              var fallbackWaypoints = [
                 [startLat, startLng],
-                [28.4850, 77.0845],
-                [28.4875, 77.0870],
-                [28.4910, 77.0885],
-                [28.4940, 77.0900],
+                [startLat + (endLat - startLat) * 0.33, startLng + (endLng - startLng) * 0.33],
+                [startLat + (endLat - startLat) * 0.66, startLng + (endLng - startLng) * 0.66],
                 [endLat, endLng]
               ];
 
-              // Outer shadow path
-              L.polyline(routeWaypoints, {
-                color: '#1d4ed8',
-                weight: 12,
-                opacity: 0.25,
-                lineCap: 'round',
-                lineJoin: 'round'
-              }).addTo(map);
+              function applyRoute(waypoints) {
+                L.polyline(waypoints, {
+                  color: '#1d4ed8',
+                  weight: 12,
+                  opacity: 0.25,
+                  lineCap: 'round',
+                  lineJoin: 'round'
+                }).addTo(map);
 
-              // Main Glowing Blue Route line (Uber style)
-              var mainRoute = L.polyline(routeWaypoints, {
-                color: '#2563eb',
-                weight: 6,
-                opacity: 1,
-                lineCap: 'round',
-                lineJoin: 'round'
-              }).addTo(map);
+                L.polyline(waypoints, {
+                  color: '#2563eb',
+                  weight: 6,
+                  opacity: 1,
+                  lineCap: 'round',
+                  lineJoin: 'round'
+                }).addTo(map);
+
+                // Moving Simulated Driver along road coordinates
+                var carMarker = L.marker([startLat, startLng], { icon: carIcon }).addTo(map);
+                var progress = 0;
+                setInterval(function() {
+                  progress = (progress + 0.006) % 1.0;
+                  var totalSeg = waypoints.length - 1;
+                  var scaled = progress * totalSeg;
+                  var idx = Math.min(Math.floor(scaled), totalSeg - 1);
+                  var frac = scaled - idx;
+                  var p1 = waypoints[idx];
+                  var p2 = waypoints[idx + 1];
+
+                  var curLat = p1[0] + (p2[0] - p1[0]) * frac;
+                  var curLng = p1[1] + (p2[1] - p1[1]) * frac;
+                  carMarker.setLatLng([curLat, curLng]);
+                }, 100);
+
+                map.fitBounds([
+                  [startLat, startLng],
+                  [endLat, endLng]
+                ], { padding: [60, 60] });
+              }
+
+              var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' + startLng + ',' + startLat + ';' + endLng + ',' + endLat + '?overview=full&geometries=geojson';
+              fetch(osrmUrl)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                  if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                    var coords = data.routes[0].geometry.coordinates.map(function(c) {
+                      return [c[1], c[0]];
+                    });
+                    applyRoute(coords);
+                  } else {
+                    applyRoute(fallbackWaypoints);
+                  }
+                })
+                .catch(function() {
+                  applyRoute(fallbackWaypoints);
+                });
 
               // Pickup Marker
               var pickupMarker = L.marker([startLat, startLng], {
@@ -336,29 +387,6 @@ private fun generateLeafletMapHtml(
                 icon: L.divIcon({ className: 'destination-marker', iconSize: [18, 18], iconAnchor: [9, 9] })
               }).addTo(map);
               destMarker.bindTooltip('$dropName', { permanent: true, direction: 'top', className: 'tooltip-label', offset: [0, -10] });
-
-              // Moving Simulated Car
-              var carMarker = L.marker([startLat, startLng], { icon: carIcon }).addTo(map);
-
-              var progress = 0;
-              setInterval(function() {
-                progress = (progress + 0.008) % 1.0;
-                var totalSeg = routeWaypoints.length - 1;
-                var scaled = progress * totalSeg;
-                var idx = Math.min(Math.floor(scaled), totalSeg - 1);
-                var frac = scaled - idx;
-                var p1 = routeWaypoints[idx];
-                var p2 = routeWaypoints[idx + 1];
-
-                var curLat = p1[0] + (p2[0] - p1[0]) * frac;
-                var curLng = p1[1] + (p2[1] - p1[1]) * frac;
-                carMarker.setLatLng([curLat, curLng]);
-              }, 120);
-
-              map.fitBounds([
-                [startLat, startLng],
-                [endLat, endLng]
-              ], { padding: [60, 60] });
             } else {
               // Current User Location Marker with pulse
               var userIcon = L.divIcon({
@@ -378,6 +406,7 @@ private fun generateLeafletMapHtml(
         </html>
     """.trimIndent()
 }
+
 
 // -------------------------------------------------------------
 // High-Fidelity Realistic Fallback Vector Map

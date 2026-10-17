@@ -169,6 +169,19 @@ interface YugoApi {
 
     @GET("locations/recent")
     suspend fun getRecentLocations(): retrofit2.Response<LocationsResponse>
+
+    @GET("locations/search")
+    suspend fun searchLocations(
+        @Query("q") query: String
+    ): retrofit2.Response<LocationsResponse>
+
+    @GET("locations/route")
+    suspend fun getRoute(
+        @Query("fromLat") fromLat: Double,
+        @Query("fromLng") fromLng: Double,
+        @Query("toLat") toLat: Double,
+        @Query("toLng") toLng: Double
+    ): retrofit2.Response<RouteResponseDto>
 }
 
 object ApiClient {
