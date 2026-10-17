@@ -29,13 +29,22 @@ fun SplashScreen(
     onSplashFinished: (isLoggedIn: Boolean) -> Unit
 ) {
     val context = LocalContext.current
+    val isLoggedIn by SessionManager.getInstance(context).isLoggedIn.collectAsState()
+
+    if (isLoggedIn) {
+        // Once the user is onboarded, opening the app shows the video animation, then opens dashboard
+        com.yugo.app.ui.screens.auth.AuthLoadingVideoScreen(
+            onFinished = { onSplashFinished(true) }
+        )
+        return
+    }
+
     var isFinished by remember { mutableStateOf(false) }
 
     fun finishSplash() {
         if (!isFinished) {
             isFinished = true
-            val isLoggedIn = SessionManager.getInstance(context).isLoggedIn.value
-            onSplashFinished(isLoggedIn)
+            onSplashFinished(false)
         }
     }
 

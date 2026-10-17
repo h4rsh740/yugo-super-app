@@ -209,11 +209,7 @@ object ApiClient {
                 return if (custom.endsWith("/")) custom else "$custom/"
             }
         }
-        return if (isEmulator()) {
-            "http://10.0.2.2:8080/api/v1/"
-        } else {
-            "https://yugo-backend.onrender.com/api/v1/"
-        }
+        return "https://yugo-backend.onrender.com/api/v1/"
     }
 
     private val authInterceptor = Interceptor { chain ->
@@ -282,9 +278,9 @@ object ApiClient {
             .addInterceptor(authInterceptor)
             .authenticator(tokenAuthenticator)
             .addInterceptor(loggingInterceptor)
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .readTimeout(8, TimeUnit.SECONDS)
-            .writeTimeout(8, TimeUnit.SECONDS)
+            .connectTimeout(25, TimeUnit.SECONDS)
+            .readTimeout(25, TimeUnit.SECONDS)
+            .writeTimeout(25, TimeUnit.SECONDS)
             .build()
     }
 

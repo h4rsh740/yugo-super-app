@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -31,16 +32,17 @@ import com.yugo.app.ui.screens.services.ServicesScreen
 fun YugoApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: YugoBottomDestination.HOME.route
+    val currentRoute = navBackStackEntry?.destination?.route.orEmpty()
 
     val rideViewModel: RideBookingViewModel = viewModel()
     val foodViewModel: FoodViewModel = viewModel()
     val parcelViewModel: ParcelViewModel = viewModel()
 
+    val isFullScreenRoute = currentRoute in listOf("splash", "auth_loading_video")
     val showBottomBar = currentRoute in listOf("home", "services", "activity", "account")
 
     Scaffold(
-        containerColor = com.yugo.app.ui.theme.YugoWhite,
+        containerColor = if (isFullScreenRoute) Color.Black else com.yugo.app.ui.theme.YugoWhite,
         bottomBar = {
             if (showBottomBar) {
                 YugoBottomNavBar(
@@ -59,7 +61,7 @@ fun YugoApp() {
         NavHost(
             navController = navController,
             startDestination = "splash",
-            modifier = Modifier.padding(innerPadding),
+            modifier = if (isFullScreenRoute) Modifier else Modifier.padding(innerPadding),
             enterTransition = {
                 slideIntoContainer(
                     towards = AnimatedContentTransitionScope.SlideDirection.Start,
@@ -121,8 +123,18 @@ fun YugoApp() {
                     initialTestOtp = testOtp,
                     onBackClick = { navController.popBackStack() },
                     onVerificationSuccess = {
-                        navController.navigate("home") {
+                        navController.navigate("auth_loading_video") {
                             popUpTo("login") { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable("auth_loading_video") {
+                com.yugo.app.ui.screens.auth.AuthLoadingVideoScreen(
+                    onFinished = {
+                        navController.navigate("home") {
+                            popUpTo("auth_loading_video") { inclusive = true }
                         }
                     }
                 )
