@@ -1,6 +1,6 @@
 {
   "name": "yugo-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Full-stack Backend REST API for YUGO Super App (Rides, Food, Parcel, Activity)",
   "main": "server.js",
   "scripts": {

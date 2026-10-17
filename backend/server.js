@@ -38,7 +38,7 @@ const getHealthStatus = async () => {
     status: dbStatus === "connected" ? "healthy" : "degraded",
     database: dbStatus,
     service: "YUGO Super App API",
-    version: "1.0.0",
+    version: "1.0.1",
     uptimeSeconds: Math.floor(process.uptime()),
     timestamp: new Date().toISOString()
   };
