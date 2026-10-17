@@ -300,42 +300,15 @@ fun FoodCheckoutScreen(
         )
     }
 
-    // Payment Selection Dialog
+    // Animated Payment Selection Bottom Sheet
     if (showPaymentSheet) {
-        AlertDialog(
-            onDismissRequest = { showPaymentSheet = false },
-            title = { Text("Select Payment Method", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    listOf("Online UPI", "YUGO Cash Wallet", "Credit / Debit Card", "Cash on Delivery").forEach { opt ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.setPaymentMethod(opt)
-                                    showPaymentSheet = false
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            RadioButton(
-                                selected = uiState.paymentMethod == opt,
-                                onClick = {
-                                    viewModel.setPaymentMethod(opt)
-                                    showPaymentSheet = false
-                                }
-                            )
-                            Text(opt, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
+        com.yugo.app.ui.components.payment.PaymentSelectionBottomSheet(
+            amount = grandTotal,
+            selectedMethod = uiState.paymentMethod,
+            onMethodSelected = { method ->
+                viewModel.setPaymentMethod(method)
             },
-            confirmButton = {
-                TextButton(onClick = { showPaymentSheet = false }) {
-                    Text("Close", color = YugoTextSecondary)
-                }
-            }
+            onDismissRequest = { showPaymentSheet = false }
         )
     }
 }

@@ -107,7 +107,7 @@ class RideBookingViewModel(
 
                 _uiState.value = _uiState.value.copy(
                     bookingId = booking.bookingId,
-                    rideStatus = RideStatus.DRIVER_ASSIGNED,
+                    rideStatus = RideStatus.SEARCHING,
                     assignedDriver = driver,
                     etaMinutesRemaining = booking.estimatedEtaMinutes,
                     isBookingInProgress = false
@@ -128,11 +128,20 @@ class RideBookingViewModel(
     private fun startRideLifecycle(bookingId: String) {
         statusPollingJob?.cancel()
         statusPollingJob = viewModelScope.launch {
-            // 1. DRIVER_ASSIGNED (driver matched)
+            // 1. SEARCHING animation (expanding search radius)
+            delay(3200)
+            if (_uiState.value.rideStatus == RideStatus.CANCELLED) return@launch
+
+            // 2. DRIVER_ASSIGNED (driver matched)
+            _uiState.value = _uiState.value.copy(
+                rideStatus = RideStatus.DRIVER_ASSIGNED,
+                etaMinutesRemaining = 3
+            )
+
             delay(4000)
             if (_uiState.value.rideStatus == RideStatus.CANCELLED) return@launch
 
-            // 2. DRIVER_ARRIVING
+            // 3. DRIVER_ARRIVING
             repository.updateRideStatus(bookingId, "DRIVER_ARRIVING")
             _uiState.value = _uiState.value.copy(
                 rideStatus = RideStatus.DRIVER_ARRIVING,

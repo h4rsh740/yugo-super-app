@@ -93,19 +93,27 @@ fun ChooseRideScreen(
                 )
 
                 // Ride options list
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 240.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.rideOptions) { option ->
-                        val isSelected = uiState.selectedOption?.id == option.id
-                        RideOptionRow(
-                            option = option,
-                            isSelected = isSelected,
-                            onSelect = { viewModel.selectRideOption(option) }
-                        )
+                if (uiState.rideOptions.isEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        com.yugo.app.ui.components.animation.VehicleChoiceSkeleton()
+                        com.yugo.app.ui.components.animation.VehicleChoiceSkeleton()
+                        com.yugo.app.ui.components.animation.VehicleChoiceSkeleton()
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 240.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(uiState.rideOptions) { option ->
+                            val isSelected = uiState.selectedOption?.id == option.id
+                            RideOptionRow(
+                                option = option,
+                                isSelected = isSelected,
+                                onSelect = { viewModel.selectRideOption(option) }
+                            )
+                        }
                     }
                 }
 
@@ -155,6 +163,18 @@ fun ChooseRideScreen(
                     )
                 }
             }
+        }
+
+        // Animated Payment Selection Bottom Sheet
+        if (showPaymentSheet) {
+            com.yugo.app.ui.components.payment.PaymentSelectionBottomSheet(
+                amount = uiState.selectedOption?.fareAmount ?: 120.0,
+                selectedMethod = uiState.paymentMethod,
+                onMethodSelected = { method ->
+                    viewModel.setPaymentMethod(method)
+                },
+                onDismissRequest = { showPaymentSheet = false }
+            )
         }
     }
 }

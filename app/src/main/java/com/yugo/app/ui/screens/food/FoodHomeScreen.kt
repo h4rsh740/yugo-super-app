@@ -94,7 +94,7 @@ fun FoodHomeScreen(
             // Search Input
             OutlinedTextField(
                 value = uiState.searchQuery,
-                onValueChange = {},
+                onValueChange = { viewModel.onSearchQueryChange(it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
@@ -219,14 +219,24 @@ fun FoodHomeScreen(
                     )
                 }
 
-                items(uiState.restaurants) { restaurant ->
-                    RestaurantRowCard(
-                        restaurant = restaurant,
-                        onClick = {
-                            viewModel.selectRestaurant(restaurant)
-                            onRestaurantClick(restaurant)
+                if (uiState.restaurants.isEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            com.yugo.app.ui.components.animation.RestaurantCardSkeleton()
+                            com.yugo.app.ui.components.animation.RestaurantCardSkeleton()
+                            com.yugo.app.ui.components.animation.RestaurantCardSkeleton()
                         }
-                    )
+                    }
+                } else {
+                    items(uiState.restaurants) { restaurant ->
+                        RestaurantRowCard(
+                            restaurant = restaurant,
+                            onClick = {
+                                viewModel.selectRestaurant(restaurant)
+                                onRestaurantClick(restaurant)
+                            }
+                        )
+                    }
                 }
             }
         }

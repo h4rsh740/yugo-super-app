@@ -1,5 +1,6 @@
 package com.yugo.app.ui.screens.parcel
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -7,13 +8,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalMall
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -137,6 +142,19 @@ fun ParcelTrackingScreen(
 
                 HorizontalDivider(color = YugoDivider)
 
+                // Animated 5-Stage Parcel Stepper
+                val currentStage = when (uiState.parcelStatus) {
+                    ParcelStatus.CREATED -> 0
+                    ParcelStatus.COURIER_ASSIGNED -> 1
+                    ParcelStatus.PICKED_UP -> 2
+                    ParcelStatus.IN_TRANSIT -> 3
+                    ParcelStatus.DELIVERED -> 4
+                    else -> 0
+                }
+                ParcelTrackingStepper(currentStage = currentStage)
+
+                HorizontalDivider(color = YugoDivider)
+
                 // Courier Details & PIN
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -216,6 +234,93 @@ fun ParcelTrackingScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun ParcelTrackingStepper(currentStage: Int) {
+    val stages = listOf(
+        Pair("Booked", Icons.Default.Check),
+        Pair("Assigned", Icons.Default.Person),
+        Pair("Picked Up", Icons.Default.LocalMall),
+        Pair("In Transit", Icons.Default.TwoWheeler),
+        Pair("Delivered", Icons.Default.CheckCircle)
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        stages.forEachIndexed { idx, (label, icon) ->
+            val isPassed = idx < currentStage
+            val isCurrent = idx == currentStage
+
+            val infiniteTransition = rememberInfiniteTransition(label = "ParcelStepPulse")
+            val pulseScale by infiniteTransition.animateFloat(
+                initialValue = 1.0f,
+                targetValue = 1.25f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(800, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "Pulse"
+            )
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .scale(if (isCurrent) pulseScale else 1f)
+                        .clip(CircleShape)
+                        .background(
+                            when {
+                                isPassed -> Color(0xFF16A34A)
+                                isCurrent -> YugoBlack
+                                else -> YugoSurfaceVariant
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = label,
+                        tint = if (isPassed || isCurrent) YugoWhite else YugoTextMuted,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = if (isCurrent) FontWeight.Black else if (isPassed) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 9.5.sp,
+                        color = when {
+                            isCurrent -> YugoBlack
+                            isPassed -> Color(0xFF16A34A)
+                            else -> YugoTextMuted
+                        }
+                    ),
+                    maxLines = 1
+                )
+            }
+
+            if (idx < stages.size - 1) {
+                Box(
+                    modifier = Modifier
+                        .height(3.dp)
+                        .weight(0.5f)
+                        .background(
+                            if (idx < currentStage) Color(0xFF16A34A) else YugoDivider
+                        )
+                )
+            }
         }
     }
 }

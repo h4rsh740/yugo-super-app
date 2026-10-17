@@ -260,20 +260,53 @@ fun ActiveRideScreen(
         }
 
         // 3. Bottom Driver & Vehicle Status Overlay Card
-        Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-            color = YugoWhite,
-            shadowElevation = 12.dp
-        ) {
-            Column(
+        if (uiState.rideStatus == RideStatus.SEARCHING) {
+            SearchingDriverAnimationView(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                onCancelClick = {
+                    viewModel.cancelRide()
+                    onCancelClick()
+                }
+            )
+        } else {
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+                color = YugoWhite,
+                shadowElevation = 12.dp
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Driver Matched Celebration Banner
+                    if (uiState.rideStatus == RideStatus.DRIVER_ASSIGNED) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFF0FDF4),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBBF7D0)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text("✨", fontSize = 16.sp)
+                                Text(
+                                    text = "Driver Matched! ${driver?.name ?: "Driver"} is on the way (${uiState.etaMinutesRemaining} mins away)",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF166534)
+                                    )
+                                )
+                            }
+                        }
+                    }
                 // Status Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -451,6 +484,7 @@ fun ActiveRideScreen(
                 }
             }
         }
+    }
 
         // 4. Trip Completed Modal Dialog
         if (uiState.rideStatus == RideStatus.COMPLETED || uiState.isCompleted) {

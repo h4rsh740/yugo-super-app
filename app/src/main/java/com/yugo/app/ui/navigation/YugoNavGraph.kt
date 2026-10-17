@@ -10,6 +10,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.yugo.app.ui.components.YugoBottomNavBar
@@ -56,7 +59,31 @@ fun YugoApp() {
         NavHost(
             navController = navController,
             startDestination = "splash",
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(300))
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(300))
+            },
+            popExitTransition = {
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(300))
+            }
         ) {
             composable("splash") {
                 com.yugo.app.ui.screens.splash.SplashScreen(
@@ -119,7 +146,14 @@ fun YugoApp() {
 
             composable("activity") {
                 ActivityScreen(
-                    onReorderClick = { navController.navigate("search_ride") }
+                    onReorderClick = { activity ->
+                        when (activity.serviceType) {
+                            com.yugo.app.data.model.ServiceType.CAB,
+                            com.yugo.app.data.model.ServiceType.BIKE -> navController.navigate("search_ride")
+                            com.yugo.app.data.model.ServiceType.FOOD -> navController.navigate("food_home")
+                            com.yugo.app.data.model.ServiceType.PARCEL -> navController.navigate("parcel_home")
+                        }
+                    }
                 )
             }
 
@@ -182,7 +216,15 @@ fun YugoApp() {
                 FoodCheckoutScreen(
                     viewModel = foodViewModel,
                     onBackClick = { navController.popBackStack() },
-                    onPlaceOrderClick = { navController.navigate("activity") }
+                    onPlaceOrderClick = { navController.navigate("food_order_tracking") }
+                )
+            }
+
+            composable("food_order_tracking") {
+                FoodOrderTrackingScreen(
+                    viewModel = foodViewModel,
+                    onBackClick = { navController.navigate("home") { popUpTo("home") { inclusive = true } } },
+                    onHomeClick = { navController.navigate("home") { popUpTo("home") { inclusive = true } } }
                 )
             }
 

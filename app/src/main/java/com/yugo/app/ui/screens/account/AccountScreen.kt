@@ -49,6 +49,8 @@ fun AccountScreen(
     var showNotificationPreferencesDialog by remember { mutableStateOf(false) }
     var showHelpSupportDialog by remember { mutableStateOf(false) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var savedAddresses by remember { mutableStateOf<List<com.yugo.app.data.api.SavedPlaceDto>>(emptyList()) }
+    var topupReceipt by remember { mutableStateOf<Pair<Double, String>?>(null) }
 
     // Synchronize live profile on screen open
     LaunchedEffect(Unit) {
@@ -65,6 +67,7 @@ fun AccountScreen(
                     isPhoneVerified = p.isPhoneVerified
                 )
                 sessionManager.updateUser(updated)
+                savedAddresses = p.savedPlaces
             }
             else -> {}
         }
@@ -315,7 +318,7 @@ fun AccountScreen(
         var isProcessing by remember { mutableStateOf(false) }
 
         AlertDialog(
-            onDismissRequest = { showAddMoneyDialog = false },
+            onDismissRequest = { if (!isProcessing) showAddMoneyDialog = false },
             title = { Text("Top Up YUGO Cash", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -350,19 +353,82 @@ fun AccountScreen(
                             val res = repository.topupWallet(amount)
                             if (res is ApiResult.Success) {
                                 sessionManager.updateWalletBalance(res.data)
+                                val txnId = "TXN-TOPUP-${System.currentTimeMillis().toString().takeLast(6)}"
+                                topupReceipt = Pair(amount, txnId)
                             }
                             isProcessing = false
                             showAddMoneyDialog = false
                         }
                     },
+                    enabled = !isProcessing,
                     colors = ButtonDefaults.buttonColors(containerColor = YugoBlack)
                 ) {
-                    Text("Pay ₹${topupAmount.ifBlank { "0" }} & Top Up")
+                    if (isProcessing) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = YugoWhite, strokeWidth = 2.dp)
+                    } else {
+                        Text("Pay ₹${topupAmount.ifBlank { "0" }} & Top Up")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddMoneyDialog = false }) {
+                TextButton(
+                    onClick = { showAddMoneyDialog = false },
+                    enabled = !isProcessing
+                ) {
                     Text("Cancel", color = YugoTextSecondary)
+                }
+            }
+        )
+    }
+
+    // Top-Up Transaction Receipt Dialog
+    if (topupReceipt != null) {
+        AlertDialog(
+            onDismissRequest = { topupReceipt = null },
+            icon = {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = YugoGreen,
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = { Text("Top-Up Successful", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "₹${String.format("%.2f", topupReceipt!!.first)}",
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                        color = YugoGreen
+                    )
+                    Text(
+                        text = "Added to YUGO Cash Wallet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = YugoTextSecondary
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = YugoSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Transaction Ref: ${topupReceipt!!.second}", style = MaterialTheme.typography.bodySmall, color = YugoTextMuted)
+                            Text("Updated Balance: ₹${String.format("%.2f", walletBalance)}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                            Text("Payment Mode: Safe Test UPI / Card", style = MaterialTheme.typography.bodySmall, color = YugoTextSecondary)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { topupReceipt = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = YugoBlack)
+                ) {
+                    Text("Done")
                 }
             }
         )
@@ -372,30 +438,94 @@ fun AccountScreen(
     if (showSavedPlacesDialog) {
         var newTitle by remember { mutableStateOf("") }
         var newAddress by remember { mutableStateOf("") }
+        var selectedLabel by remember { mutableStateOf("OTHER") }
         var isAdding by remember { mutableStateOf(false) }
 
         AlertDialog(
-            onDismissRequest = { showSavedPlacesDialog = false },
+            onDismissRequest = { if (!isAdding) showSavedPlacesDialog = false },
             title = { Text("Saved Places", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "1. Home: Sector 54, Golf Course Road, Gurugram\n2. Work: DLF Cyber City, Tower B, Gurugram",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (savedAddresses.isEmpty()) {
+                        Text(
+                            text = "No saved places yet. Add your home, work, or favourite spot below.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = YugoTextSecondary
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            savedAddresses.forEach { place ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(YugoSurfaceVariant)
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val icon = when (place.label.uppercase()) {
+                                        "HOME" -> Icons.Default.Home
+                                        "WORK" -> Icons.Default.Work
+                                        else -> Icons.Default.Place
+                                    }
+                                    Icon(icon, contentDescription = null, tint = YugoBlack, modifier = Modifier.size(20.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(place.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                        Text(place.address, style = MaterialTheme.typography.bodySmall, color = YugoTextSecondary, maxLines = 1)
+                                    }
+                                    place.id?.let { pid ->
+                                        IconButton(
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    repository.deleteSavedAddress(pid)
+                                                    when (val res = repository.fetchProfile()) {
+                                                        is ApiResult.Success -> savedAddresses = res.data.savedPlaces
+                                                        else -> {}
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = YugoRed, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     HorizontalDivider()
-                    Text("Add New Place:", fontWeight = FontWeight.Bold)
+
+                    Text("Add New Place:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("HOME", "WORK", "OTHER").forEach { lbl ->
+                            FilterChip(
+                                selected = selectedLabel == lbl,
+                                onClick = { selectedLabel = lbl },
+                                label = { Text(lbl, fontSize = 11.sp) }
+                            )
+                        }
+                    }
                     OutlinedTextField(
                         value = newTitle,
                         onValueChange = { newTitle = it },
-                        label = { Text("Label (e.g. Gym, Friend)") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Place Name (e.g. Home, Gym)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                     OutlinedTextField(
                         value = newAddress,
                         onValueChange = { newAddress = it },
-                        label = { Text("Complete Address") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("Full Street Address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                 }
             },
@@ -403,21 +533,37 @@ fun AccountScreen(
                 Button(
                     onClick = {
                         if (newTitle.isNotBlank() && newAddress.isNotBlank()) {
+                            isAdding = true
                             coroutineScope.launch {
-                                repository.addSavedAddress(newTitle, newAddress, "OTHER")
+                                repository.addSavedAddress(newTitle, newAddress, selectedLabel)
+                                when (val res = repository.fetchProfile()) {
+                                    is ApiResult.Success -> savedAddresses = res.data.savedPlaces
+                                    else -> {}
+                                }
+                                newTitle = ""
+                                newAddress = ""
+                                isAdding = false
                                 showSavedPlacesDialog = false
                             }
                         } else {
                             showSavedPlacesDialog = false
                         }
                     },
+                    enabled = !isAdding,
                     colors = ButtonDefaults.buttonColors(containerColor = YugoBlack)
                 ) {
-                    Text("Done")
+                    if (isAdding) {
+                        CircularProgressIndicator(modifier = Modifier.size(14.dp), color = YugoWhite, strokeWidth = 2.dp)
+                    } else {
+                        Text("Save & Add")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSavedPlacesDialog = false }) {
+                TextButton(
+                    onClick = { showSavedPlacesDialog = false },
+                    enabled = !isAdding
+                ) {
                     Text("Close", color = YugoTextSecondary)
                 }
             }
